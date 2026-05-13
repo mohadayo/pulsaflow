@@ -1,0 +1,49 @@
+services:
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "${API_GATEWAY_PORT:-8080}:8080"
+    environment:
+      - ANALYTICS_URL=http://analytics-engine:8081
+      - NOTIFICATION_URL=http://notification-service:8082
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - FLASK_DEBUG=${FLASK_DEBUG:-false}
+    depends_on:
+      analytics-engine:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  analytics-engine:
+    build: ./analytics-engine
+    ports:
+      - "${ANALYTICS_PORT:-8081}:8081"
+    environment:
+      - ANALYTICS_PORT=8081
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  notification-service:
+    build: ./notification-service
+    ports:
+      - "${NOTIFICATION_PORT:-8082}:8082"
+    environment:
+      - NOTIFICATION_PORT=8082
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
